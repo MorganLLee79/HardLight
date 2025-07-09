@@ -372,9 +372,9 @@
         pitch: 1.2
         variation: 0.08
   - type: BasicEntityAmmoProvider
-    proto: NFBulletKineticShuttle
-    capacity: 10
-    count: 10
+    proto: BulletKineticShuttle
+    capacity: 100 # Mono 10->100
+    count: 100 # Mono 10->100
   - type: Machine
     board: ShuttleGunKineticCircuitboard
   - type: ExtensionCableReceiver # Frontier
