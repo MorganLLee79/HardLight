@@ -211,7 +211,8 @@ public sealed class StationSystem : EntitySystem
         // Remove all stations except the old one (if any) before creating new ones
         foreach (var station in GetStations())
         {
-            if (_oldStation != null && station == _oldStation.Value)
+            // Preserve the old station (main transfer) and any shuttle stations
+            if ((_oldStation != null && station == _oldStation.Value) || HasComp<ShuttleDeedComponent>(station))
                 continue;
             RemComp<TransferableStationComponent>(station);
             RemComp<StationJobsComponent>(station);
@@ -232,7 +233,13 @@ public sealed class StationSystem : EntitySystem
 
             // Only consider as primary if at least one grid has TransferableStationComponent and is NOT a shuttle
             var hasTransferableGrid = gridIds.Any(grid => HasComp<TransferableStationComponent>(grid) && !HasComp<ShuttleDeedComponent>(grid));
+            var isShuttleStation = gridIds.Any(grid => HasComp<ShuttleDeedComponent>(grid));
 
+            if (isShuttleStation)
+            {
+                // Shuttle stations are preserved but not transferred or re-initialized
+                continue;
+            }
             if (!_stationTransferredThisRound && _oldStation != null && EntityManager.EntityExists(_oldStation.Value) && hasTransferableGrid)
             {
                 // REUSE the old station entity and its StationDataComponent for the new round
@@ -271,7 +278,7 @@ public sealed class StationSystem : EntitySystem
             }
             else
             {
-                // Secondary station or shuttle: do NOT synchronize or transfer data
+                // Secondary station: do NOT synchronize or transfer data
                 _sawmill.Info($"Station {id} in map {ev.GameMap.ID} is not primary (no TransferableStationComponent or is a shuttle), skipping data transfer/sync.");
                 // Initialize as a separate station if needed, but do not transfer data
                 InitializeNewStation(stationConfig, gridIds.Where(grid => !HasComp<ShuttleDeedComponent>(grid)), ev.StationName);
