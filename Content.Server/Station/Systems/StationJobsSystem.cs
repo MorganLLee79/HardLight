@@ -72,11 +72,15 @@ public sealed partial class StationJobsSystem : EntitySystem
         if (!TryComp<StationJobsComponent>(msg.Station, out var stationJobs))
             return;
 
-        stationJobs.JobList = stationJobs.SetupAvailableJobs.ToDictionary(
-            x => x.Key,
-            x=> (int?)(x.Value[1] < 0 ? null : x.Value[1]));
+        // Only initialize if this is a fresh component (i.e., not transferred)
+        if (stationJobs.JobList == null || stationJobs.JobList.Count == 0)
+        {
+            stationJobs.JobList = stationJobs.SetupAvailableJobs.ToDictionary(
+                x => x.Key,
+                x=> (int?)(x.Value[1] < 0 ? null : x.Value[1]));
 
-        stationJobs.TotalJobs = stationJobs.JobList.Values.Select(x => x ?? 0).Sum();
+            stationJobs.TotalJobs = stationJobs.JobList.Values.Select(x => x ?? 0).Sum();
+        }
 
         UpdateJobsAvailable();
     }

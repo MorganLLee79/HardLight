@@ -40,6 +40,7 @@ entities:
   entities:
   - uid: 1
     components:
+    - type: TransferableStation
     - type: MetaData
     - type: Transform
     - type: Map

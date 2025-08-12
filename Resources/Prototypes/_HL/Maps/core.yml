@@ -9,7 +9,7 @@
       stationProto: StandardNanotrasenStation
       components:
         - type: StationNameSetup
-          mapNameTemplate: 'HardLight Core Station'
+          mapNameTemplate: 'HardLight Station'
 #          nameGenerator:
 #            !type:NanotrasenNameGenerator
 #            prefixCreator: '14'
@@ -41,24 +41,24 @@
             #engineering (6)
             StationEngineer: [ 4, 4 ]
             AtmosphericTechnician: [ 2, 2 ]
-            TechnicalAssistant: [ 2, 2 ] #intern, not counted
+            TechnicalAssistant: [ 3, 3 ] #intern, not counted
             #medical (6 - 8)
             MedicalDoctor: [ 3, 4 ]
             Chemist: [ 2, 2 ]
-            MedicalIntern: [ 2, 2 ] #intern, not counted
+            MedicalIntern: [ 3, 3 ] #intern, not counted
             Paramedic: [ 1, 2 ]
             #science (3)
             Scientist: [ 3, 3 ]
-            ResearchAssistant: [ 1, 1 ] #intern, not counted
+            ResearchAssistant: [ 3, 3 ] #intern, not counted
             #security (7)
             SecurityOfficer: [ 4, 4 ]
             Warden: [ 1, 1 ]
-            Lawyer: [ 1, 1 ]
-            SecurityCadet: [ 1, 1 ] #intern, not counted
+            Lawyer: [ 2, 2 ]
+            SecurityCadet: [ 3, 3 ] #intern, not counted
             Detective: [ 1, 1 ]
             #supply (5)
-            CargoTechnician: [ 3, 3 ]
-            SalvageSpecialist: [ 2, 2 ]
+            CargoTechnician: [ 4, 4 ]
+            SalvageSpecialist: [ 4, 4 ]
             #civilian (3+)
 #            Passenger: [ -1, -1 ] #infinite, not counted
             Clown: [ 1, 1 ]
