@@ -31,9 +31,10 @@ public sealed partial class SalvageSystem
 
     private void OnSalvageClaimMessage(EntityUid uid, SalvageExpeditionConsoleComponent component, ClaimSalvageMessage args)
     {
-        var station = _station.GetOwningStation(uid);
 
-        if (!TryComp<SalvageExpeditionDataComponent>(station, out var data) || data.Claimed)
+        // Use the grid/entity the console is on, not the station
+        var gridEntity = uid;
+        if (!TryComp<SalvageExpeditionDataComponent>(gridEntity, out var data) || data.Claimed)
             return;
 
         if (!data.Missions.TryGetValue(args.Index, out var missionparams))
@@ -52,7 +53,7 @@ public sealed partial class SalvageSystem
         {
             PlayDenySound((uid, component));
             _popupSystem.PopupEntity(Loc.GetString("shuttle-ftl-too-many"), uid, PopupType.MediumCaution);
-            UpdateConsoles((station.Value, data));
+            UpdateConsoles((gridEntity, data));
             return;
         }
         // End Frontier
@@ -67,32 +68,30 @@ public sealed partial class SalvageSystem
         // Run a proximity check (unless using a debug console)
         if (_salvage.ProximityCheck && !component.Debug)
         {
-            if (!TryComp<StationDataComponent>(station, out var stationData)
-                || _station.GetLargestGrid(stationData) is not { Valid: true } ourGrid
-                || !TryComp<MapGridComponent>(ourGrid, out var gridComp))
+            if (!TryComp<MapGridComponent>(gridEntity, out var gridComp))
             {
                 PlayDenySound((uid, component));
                 _popupSystem.PopupEntity(Loc.GetString("shuttle-ftl-invalid"), uid, PopupType.MediumCaution);
-                UpdateConsoles((station.Value, data));
+                UpdateConsoles((gridEntity, data));
                 return;
             }
 
-            if (HasComp<FTLComponent>(ourGrid))
+            if (HasComp<FTLComponent>(gridEntity))
             {
                 PlayDenySound((uid, component));
                 _popupSystem.PopupEntity(Loc.GetString("shuttle-ftl-recharge"), uid, PopupType.MediumCaution);
-                UpdateConsoles((station.Value, data));
+                UpdateConsoles((gridEntity, data));
                 return;
             }
 
-            var xform = Transform(ourGrid);
-            var bounds = _transform.GetWorldMatrix(ourGrid).TransformBox(gridComp.LocalAABB).Enlarged(ShuttleFTLRange);
+            var xform = Transform(gridEntity);
+            var bounds = _transform.GetWorldMatrix(gridEntity).TransformBox(gridComp.LocalAABB).Enlarged(ShuttleFTLRange);
             var bodyQuery = GetEntityQuery<PhysicsComponent>();
             var otherGrids = new List<Entity<MapGridComponent>>();
             _mapManager.FindGridsIntersecting(xform.MapID, bounds, ref otherGrids);
             foreach (var otherGrid in otherGrids)
             {
-                if (ourGrid == otherGrid.Owner ||
+                if (gridEntity == otherGrid.Owner ||
                     !bodyQuery.TryGetComponent(otherGrid.Owner, out var body) ||
                     body.Mass < ShuttleFTLMassThreshold && body.BodyType == BodyType.Dynamic)
                 {
@@ -101,31 +100,32 @@ public sealed partial class SalvageSystem
 
                 PlayDenySound((uid, component));
                 _popupSystem.PopupEntity(Loc.GetString("shuttle-ftl-proximity"), uid, PopupType.MediumCaution);
-                UpdateConsoles((station.Value, data));
+                UpdateConsoles((gridEntity, data));
                 return;
             }
         }
-        SpawnMission(missionparams, station.Value, null);
+        SpawnMission(missionparams, gridEntity, null);
         #endregion Frontier FTL changes
         // End Frontier
 
-        data.ActiveMission = args.Index;
-        var mission = GetMission(missionparams.MissionType, _prototypeManager.Index<SalvageDifficultyPrototype>(missionparams.Difficulty), missionparams.Seed); // Frontier: add MissionType
-        // Frontier - TODO: move this to progression for secondary window timer
-        data.NextOffer = _timing.CurTime + mission.Duration + TimeSpan.FromSeconds(1);
-        data.CooldownTime = mission.Duration + TimeSpan.FromSeconds(1); // Frontier
+    data.ActiveMission = args.Index;
+    var mission = GetMission(missionparams.MissionType, _prototypeManager.Index<SalvageDifficultyPrototype>(missionparams.Difficulty), missionparams.Seed); // Frontier: add MissionType
+    // Frontier - TODO: move this to progression for secondary window timer
+    data.NextOffer = _timing.CurTime + mission.Duration + TimeSpan.FromSeconds(1);
+    data.CooldownTime = mission.Duration + TimeSpan.FromSeconds(1); // Frontier
 
-        // _labelSystem.Label(cdUid, GetFTLName(_prototypeManager.Index<LocalizedDatasetPrototype>("NamesBorer"), missionparams.Seed)); // Frontier: no disc
-        // _audio.PlayPvs(component.PrintSound, uid); // Frontier: no disc
+    // _labelSystem.Label(cdUid, GetFTLName(_prototypeManager.Index<LocalizedDatasetPrototype>("NamesBorer"), missionparams.Seed)); // Frontier: no disc
+    // _audio.PlayPvs(component.PrintSound, uid); // Frontier: no disc
 
-        UpdateConsoles((station.Value, data));
+    UpdateConsoles((gridEntity, data));
     }
 
     // Frontier: early expedition end
     private void OnSalvageFinishMessage(EntityUid entity, SalvageExpeditionConsoleComponent component, FinishSalvageMessage e)
     {
-        var station = _station.GetOwningStation(entity);
-        if (!TryComp<SalvageExpeditionDataComponent>(station, out var data) || !data.CanFinish)
+        // Use the entity/grid directly
+        var gridEntity = entity;
+        if (!TryComp<SalvageExpeditionDataComponent>(gridEntity, out var data) || !data.CanFinish)
             return;
 
         // Based on SalvageSystem.Runner:OnConsoleFTLAttempt
@@ -133,7 +133,7 @@ public sealed partial class SalvageSystem
         {
             PlayDenySound((entity, component));
             _popupSystem.PopupEntity(Loc.GetString("salvage-expedition-shuttle-not-found"), entity, PopupType.MediumCaution);
-            UpdateConsoles((station.Value, data));
+            UpdateConsoles((gridEntity, data));
             return;
         }
 
@@ -165,14 +165,14 @@ public sealed partial class SalvageSystem
             {
                 PlayDenySound((entity, component));
                 _popupSystem.PopupEntity(Loc.GetString("salvage-expedition-not-everyone-aboard", ("target", uid)), entity, PopupType.MediumCaution);
-                UpdateConsoles((station.Value, data));
+                UpdateConsoles((gridEntity, data));
                 return;
             }
         }
         // End SalvageSystem.Runner:OnConsoleFTLAttempt
 
-        data.CanFinish = false;
-        UpdateConsoles((station.Value, data));
+    data.CanFinish = false;
+    UpdateConsoles((gridEntity, data));
 
         var map = Transform(entity).MapUid;
 
@@ -195,7 +195,17 @@ public sealed partial class SalvageSystem
 
     private void OnSalvageConsoleInit(Entity<SalvageExpeditionConsoleComponent> console, ref ComponentInit args)
     {
-        UpdateConsole(console);
+    // Always ensure SalvageExpeditionDataComponent is present and missions are generated
+    var gridEntity = console.Owner;
+    var data = EnsureComp<SalvageExpeditionDataComponent>(gridEntity);
+    data.ActiveMission = 0;
+    data.Cooldown = false;
+    data.CanFinish = false;
+    data.NextOffer = _timing.CurTime;
+    data.CooldownTime = TimeSpan.Zero;
+    data.Missions.Clear();
+    _salvage.GenerateMissions(data);
+    UpdateConsole(console);
     }
 
     private void OnSalvageConsoleParent(Entity<SalvageExpeditionConsoleComponent> console, ref EntParentChangedMessage args)
@@ -210,9 +220,8 @@ public sealed partial class SalvageSystem
         var query = AllEntityQuery<SalvageExpeditionConsoleComponent, UserInterfaceComponent, TransformComponent>();
         while (query.MoveNext(out var uid, out _, out var uiComp, out var xform))
         {
-            var station = _station.GetOwningStation(uid, xform);
-
-            if (station != component.Owner)
+            // Use the grid/entity directly
+            if (uid != component.Owner)
                 continue;
 
             _ui.SetUiState((uid, uiComp), SalvageConsoleUiKey.Expedition, state);
@@ -221,26 +230,23 @@ public sealed partial class SalvageSystem
 
     private void UpdateConsole(Entity<SalvageExpeditionConsoleComponent> component)
     {
-        var station = _station.GetOwningStation(component);
+        var gridEntity = component.Owner;
         SalvageExpeditionConsoleState state;
 
-        if (TryComp<SalvageExpeditionDataComponent>(station, out var dataComponent))
+        if (TryComp<SalvageExpeditionDataComponent>(gridEntity, out var dataComponent))
         {
             state = GetState(dataComponent);
         }
         else
         {
-            state = new SalvageExpeditionConsoleState(TimeSpan.Zero, false, true, 0, new List<SalvageMissionParams>(), false, TimeSpan.FromSeconds(1)); // Frontier: add false, 1 second timespan as last args (cannot finish, not on a mission)
+            state = new SalvageExpeditionConsoleState(TimeSpan.Zero, false, true, 0, new List<SalvageMissionParams>(), false, TimeSpan.FromSeconds(1));
         }
 
-        // Frontier: if we have a lingering FTL component, we cannot start a new mission
-        if (!TryComp<StationDataComponent>(station, out var stationData) ||
-                _station.GetLargestGrid(stationData) is not { Valid: true } grid ||
-                HasComp<FTLComponent>(grid))
+        // If we have a lingering FTL component, we cannot start a new mission
+        if (HasComp<FTLComponent>(gridEntity))
         {
             state.Cooldown = true; //Hack: disable buttons
         }
-        // End Frontier
 
         _ui.SetUiState(component.Owner, SalvageConsoleUiKey.Expedition, state);
     }
