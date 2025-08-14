@@ -170,6 +170,10 @@ public sealed partial class ShuttleSystem
         if (!_cfg.GetCVar(CCVars.GridFill))
             return;
 
+        // Skip if this grid is already associated with a station (prevents interference with leftover shuttles)
+        if (HasComp<StationMemberComponent>(uid))
+            return;
+
         if (!TryComp<StationDataComponent>(uid, out var data))
         {
             return;

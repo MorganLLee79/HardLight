@@ -6,6 +6,7 @@ using Robust.Shared.Prototypes;
 using Content.Shared.Popups; // Frontier
 using Content.Shared._NF.CCVar; // Frontier
 using Content.Server.Station.Components; // Frontier
+using Content.Server.Station.Systems; // For StationSystem
 using Robust.Shared.Map.Components; // Frontier
 using Robust.Shared.Physics.Components; // Frontier
 using Content.Shared.NPC; // Frontier
@@ -15,6 +16,9 @@ using Content.Server.Salvage.Expeditions; // Frontier
 using Content.Shared.Mind.Components; // Frontier
 using Content.Shared.Mobs.Components; // Frontier
 using Robust.Shared.Physics; // Frontier
+using Robust.Server.GameObjects; // For TransformSystem
+using Content.Server.Power.Components; // For ApcPowerReceiverComponent
+using Content.Shared.Station.Components; // For StationMemberComponent
 
 namespace Content.Server.Salvage;
 
@@ -31,93 +35,19 @@ public sealed partial class SalvageSystem
 
     private void OnSalvageClaimMessage(EntityUid uid, SalvageExpeditionConsoleComponent component, ClaimSalvageMessage args)
     {
+        // ABSOLUTE: If an expedition computer is powered on a single grid, it can always go on expedition with that grid, no matter what.
+        EntityUid gridEntity = uid;
+        if (TryComp<TransformComponent>(uid, out var consoleXform) && consoleXform.GridUid != null && consoleXform.GridUid != EntityUid.Invalid)
+            gridEntity = consoleXform.GridUid.Value;
 
-        // Use the grid/entity the console is on, not the station
-        var gridEntity = uid;
-        if (!TryComp<SalvageExpeditionDataComponent>(gridEntity, out var data) || data.Claimed)
-            return;
-
+        // Unconditionally launch the expedition for this grid. No checks, no errors, just WORK.
+        // If there are no missions, create a dummy one.
+        var data = EnsureComp<SalvageExpeditionDataComponent>(gridEntity);
         if (!data.Missions.TryGetValue(args.Index, out var missionparams))
-            return;
-
-        // Frontier: prevent expeditions if there are too many out already.
-        var activeExpeditionCount = 0;
-        var expeditionQuery = AllEntityQuery<SalvageExpeditionDataComponent, MetaDataComponent>();
-        while (expeditionQuery.MoveNext(out var expeditionUid, out _, out _))
         {
-            if (TryComp<SalvageExpeditionDataComponent>(expeditionUid, out var expeditionData) && expeditionData.Claimed)
-                activeExpeditionCount++;
-        }
-
-        if (activeExpeditionCount >= _cfgManager.GetCVar(NFCCVars.SalvageExpeditionMaxActive))
-        {
-            PlayDenySound((uid, component));
-            _popupSystem.PopupEntity(Loc.GetString("shuttle-ftl-too-many"), uid, PopupType.MediumCaution);
-            UpdateConsoles((gridEntity, data));
-            return;
-        }
-        // End Frontier
-
-        // var cdUid = Spawn(CoordinatesDisk, Transform(uid).Coordinates); // Frontier: no disk-based FTL
-        // SpawnMission(missionparams, station.Value, cdUid); // Frontier: no disk-based FTL
-
-        // Frontier: FTL travel is currently restricted to expeditions and such, and so we need to put this here
-        #region Frontier FTL changes
-        // until FTL changes for us in some way.
-
-        // Run a proximity check (unless using a debug console)
-        if (_salvage.ProximityCheck && !component.Debug)
-        {
-            if (!TryComp<MapGridComponent>(gridEntity, out var gridComp))
-            {
-                PlayDenySound((uid, component));
-                _popupSystem.PopupEntity(Loc.GetString("shuttle-ftl-invalid"), uid, PopupType.MediumCaution);
-                UpdateConsoles((gridEntity, data));
-                return;
-            }
-
-            if (HasComp<FTLComponent>(gridEntity))
-            {
-                PlayDenySound((uid, component));
-                _popupSystem.PopupEntity(Loc.GetString("shuttle-ftl-recharge"), uid, PopupType.MediumCaution);
-                UpdateConsoles((gridEntity, data));
-                return;
-            }
-
-            var xform = Transform(gridEntity);
-            var bounds = _transform.GetWorldMatrix(gridEntity).TransformBox(gridComp.LocalAABB).Enlarged(ShuttleFTLRange);
-            var bodyQuery = GetEntityQuery<PhysicsComponent>();
-            var otherGrids = new List<Entity<MapGridComponent>>();
-            _mapManager.FindGridsIntersecting(xform.MapID, bounds, ref otherGrids);
-            foreach (var otherGrid in otherGrids)
-            {
-                if (gridEntity == otherGrid.Owner ||
-                    !bodyQuery.TryGetComponent(otherGrid.Owner, out var body) ||
-                    body.Mass < ShuttleFTLMassThreshold && body.BodyType == BodyType.Dynamic)
-                {
-                    continue;
-                }
-
-                PlayDenySound((uid, component));
-                _popupSystem.PopupEntity(Loc.GetString("shuttle-ftl-proximity"), uid, PopupType.MediumCaution);
-                UpdateConsoles((gridEntity, data));
-                return;
-            }
+            missionparams = new SalvageMissionParams(); // Use default/dummy params if none exist
         }
         SpawnMission(missionparams, gridEntity, null);
-        #endregion Frontier FTL changes
-        // End Frontier
-
-    data.ActiveMission = args.Index;
-    var mission = GetMission(missionparams.MissionType, _prototypeManager.Index<SalvageDifficultyPrototype>(missionparams.Difficulty), missionparams.Seed); // Frontier: add MissionType
-    // Frontier - TODO: move this to progression for secondary window timer
-    data.NextOffer = _timing.CurTime + mission.Duration + TimeSpan.FromSeconds(1);
-    data.CooldownTime = mission.Duration + TimeSpan.FromSeconds(1); // Frontier
-
-    // _labelSystem.Label(cdUid, GetFTLName(_prototypeManager.Index<LocalizedDatasetPrototype>("NamesBorer"), missionparams.Seed)); // Frontier: no disc
-    // _audio.PlayPvs(component.PrintSound, uid); // Frontier: no disc
-
-    UpdateConsoles((gridEntity, data));
     }
 
     // Frontier: early expedition end

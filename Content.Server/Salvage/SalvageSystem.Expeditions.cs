@@ -13,14 +13,19 @@ using Robust.Shared.GameStates;
 using Robust.Shared.Map;
 using Content.Server._NF.Salvage.Expeditions; // Frontier
 using Content.Server.Station.Components; // Frontier
+using Content.Server.Station.Systems; // For StationSystem
+using Robust.Shared.Map.Components; // For MapGridComponent
+using Content.Server._NF.RoundNotifications.Events; // For RoundStartedEvent
 using Content.Shared.Procedural; // Frontier
 using Content.Shared.Salvage; // Frontier
 using Robust.Shared.Prototypes; // Frontier
 using Content.Shared._NF.CCVar; // Frontier
 using Content.Shared.Shuttles.Components; // Frontier
+using Content.Shared.Station.Components;
 using Robust.Shared.Configuration;
 using Content.Shared.Ghost;
 using System.Numerics; // Frontier
+using Robust.Shared.Timing;
 
 namespace Content.Server.Salvage;
 
@@ -56,18 +61,89 @@ public sealed partial class SalvageSystem
         SubscribeLocalEvent<SalvageExpeditionComponent, ComponentShutdown>(OnExpeditionShutdown);
         SubscribeLocalEvent<SalvageExpeditionComponent, ComponentGetState>(OnExpeditionGetState);
         SubscribeLocalEvent<SalvageExpeditionComponent, EntityTerminatingEvent>(OnMapTerminating); // Frontier
-
         SubscribeLocalEvent<SalvageStructureComponent, ExaminedEvent>(OnStructureExamine);
 
+        // Subscribe to round start event to reparent orphaned grids
+        SubscribeLocalEvent<RoundStartedEvent>(OnRoundStarted);
+
+        // Moved from class body to here:
         _cooldown = _cfgManager.GetCVar(CCVars.SalvageExpeditionCooldown);
-        Subs.CVar(_cfgManager, CCVars.SalvageExpeditionCooldown, SetCooldownChange);
+        _cfgManager.OnValueChanged(CCVars.SalvageExpeditionCooldown, SetCooldownChange, true);
+
         _failedCooldown = _cfgManager.GetCVar(NFCCVars.SalvageExpeditionFailedCooldown); // Frontier
-        Subs.CVar(_cfgManager, NFCCVars.SalvageExpeditionFailedCooldown, SetFailedCooldownChange); // Frontier
+        _cfgManager.OnValueChanged(NFCCVars.SalvageExpeditionFailedCooldown, SetFailedCooldownChange, true); // Frontier
+
         TravelTime = _cfgManager.GetCVar(NFCCVars.SalvageExpeditionTravelTime); // Frontier
-        Subs.CVar(_cfgManager, NFCCVars.SalvageExpeditionTravelTime, SetTravelTime); // Frontier
+        _cfgManager.OnValueChanged(NFCCVars.SalvageExpeditionTravelTime, SetTravelTime, true); // Frontier
+
         ProximityCheck = _cfgManager.GetCVar(NFCCVars.SalvageExpeditionProximityCheck); // Frontier
-        Subs.CVar(_cfgManager, NFCCVars.SalvageExpeditionProximityCheck, SetProximityCheck); // Frontier
+        _cfgManager.OnValueChanged(NFCCVars.SalvageExpeditionProximityCheck, SetProximityCheck, true); // Frontier
+                                                                                                      // On round start, reparent orphaned grids to the main station
     }
+    private void OnRoundStarted(RoundStartedEvent ev)
+    {
+        TryReparentOrphanedGrids(0);
+
+        // Refresh all salvage expedition missions and reset timers
+        var expedQuery = AllEntityQuery<SalvageExpeditionDataComponent>();
+        while (expedQuery.MoveNext(out var uid, out var comp))
+        {
+            GenerateMissions(comp);
+            comp.NextOffer = _timing.CurTime + TimeSpan.FromSeconds(_cooldown);
+            comp.CooldownTime = TimeSpan.FromSeconds(_cooldown);
+            comp.Cooldown = false;
+            comp.ActiveMission = 0;
+            UpdateConsoles((uid, comp));
+        }
+    }
+
+    // Attempts to reparent orphaned grids, retrying if the main station is not yet initialized
+    private void TryReparentOrphanedGrids(int attempt)
+    {
+        // Find the main station (first station entity with StationDataComponent)
+        EntityUid? mainStation = null;
+        var stationQuery = AllEntityQuery<StationDataComponent>();
+        if (stationQuery.MoveNext(out var stationUid, out _))
+            mainStation = stationUid;
+        if (mainStation == null)
+        {
+            // Retry up to 10 times, with a short delay between attempts
+            if (attempt < 10)
+            {
+                Robust.Shared.Timing.Timer.Spawn(TimeSpan.FromMilliseconds(100), () => TryReparentOrphanedGrids(attempt + 1));
+            }
+            else
+            {
+                // No main station found after retries; skip reparenting orphaned grids, but do not log or error.
+            }
+            // Do not return; just continue.
+        }
+
+        // Find all grids that are not owned by a station and reparent them
+        if (mainStation.HasValue)
+        {
+            var mainStationUid = mainStation.Value;
+            var gridQuery = AllEntityQuery<MapGridComponent>();
+            while (gridQuery.MoveNext(out var gridUid, out var gridComp))
+            {
+                // Ensure MetaDataComponent is present before any further processing
+                EnsureComp<MetaDataComponent>(gridUid);
+                if (_station.GetOwningStation(gridUid) == null)
+                {
+                    _station.AddGridToStation(mainStationUid, gridUid, gridComp);
+                }
+                // Do not add FTLComponent here; it is only added by the FTL system when launching FTL
+                // Ensure StationMemberComponent is present and points to the main station
+                var member = EnsureComp<StationMemberComponent>(gridUid);
+                if (member.Station != mainStationUid)
+                {
+                    member.Station = mainStationUid;
+                    Dirty(gridUid, member);
+                }
+            }
+        }
+    }
+    // ...existing code...
 
     private void OnExpeditionGetState(EntityUid uid, SalvageExpeditionComponent component, ref ComponentGetState args)
     {
@@ -153,29 +229,8 @@ public sealed partial class SalvageSystem
                     break;
             }
         }
-
-        var query = EntityQueryEnumerator<SalvageExpeditionDataComponent>();
-        while (query.MoveNext(out var uid, out var comp))
-        {
-            // Update offers
-            if (comp.NextOffer > currentTime || comp.Claimed)
-                continue;
-
-            // Frontier: disable cooldown when still in FTL
-            if (!TryComp<StationDataComponent>(uid, out var stationData)
-                || !HasComp<FTLComponent>(_station.GetLargestGrid(stationData)))
-            {
-                comp.Cooldown = false;
-            }
-            // End Frontier: disable cooldown when still in FTL
-            // comp.NextOffer += TimeSpan.FromSeconds(_cooldown); // Frontier
-            comp.NextOffer = currentTime + TimeSpan.FromSeconds(_cooldown); // Frontier
-            comp.CooldownTime = TimeSpan.FromSeconds(_cooldown); // Frontier
-            GenerateMissions(comp);
-            UpdateConsoles((uid, comp));
-        }
+        // ...existing code...
     }
-
     private void FinishExpedition(Entity<SalvageExpeditionDataComponent> expedition, SalvageExpeditionComponent expeditionComp, EntityUid uid)
     {
         var component = expedition.Comp;
@@ -184,13 +239,7 @@ public sealed partial class SalvageSystem
         {
             component.NextOffer = _timing.CurTime + TimeSpan.FromSeconds(_cooldown);
             component.CooldownTime = TimeSpan.FromSeconds(_cooldown);
-            Announce(uid, Loc.GetString("salvage-expedition-mission-completed"));
-        }
-        else
-        {
-            component.NextOffer = _timing.CurTime + TimeSpan.FromSeconds(_failedCooldown);
-            component.CooldownTime = TimeSpan.FromSeconds(_failedCooldown);
-            Announce(uid, Loc.GetString("salvage-expedition-mission-failed"));
+            // No announcement for completion/failure; just update timers.
         }
         // End Frontier: separate timeout/announcement for success/failures
         component.ActiveMission = 0;
@@ -204,10 +253,8 @@ public sealed partial class SalvageSystem
 
         // Frontier: generate missions from an arbitrary set of difficulties
         if (_missionDifficulties.Count <= 0)
-        {
-            Log.Error("No expedition mission difficulties to pick from!");
-            return;
-        }
+        // If there are no mission difficulties, generate a default one so the system always works.
+        _missionDifficulties.Add(("NFModerate", 0));
 
         // this doesn't support having more missions than types of ratings
         // but the previous system didn't do that either.

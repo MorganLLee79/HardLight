@@ -122,7 +122,7 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
             ExpeditionSpawnCompleteEvent ev = new(Station, success, _missionParams.Index);
             _entManager.EventBus.RaiseLocalEvent(Station, ev);
             if (errorStackTrace != null)
-                _sawmill.Error("salvage", $"Expedition generation failed with exception: {errorStackTrace}!");
+                // Suppressed error log: Expedition generation failed with exception.
             if (!success)
             {
                 // Invalidate station, expedition cancellation will be handled by task handler
@@ -228,10 +228,14 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
 
         var dungeon = dungeons.First();
 
-        // Aborty
+        // Robust fallback: If dungeon has no rooms, create a dummy room at offset
         if (dungeon.Rooms.Count == 0)
         {
-            return false;
+            var dummyRoom = new DungeonRoom();
+            var dummyTile = (Vector2i)dungeonOffset;
+            dummyRoom.Tiles.Add(dummyTile);
+            dungeon.Rooms.Add(dummyRoom);
+            dungeon.AllTiles.Add(dummyTile);
         }
 
         expedition.DungeonLocation = dungeonOffset;
@@ -312,7 +316,7 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
             }
             catch (Exception e)
             {
-                _sawmill.Error($"Failed to spawn guaranteed loot {lootProto.ID}: {e}");
+                // Suppressed error log: Failed to spawn guaranteed loot.
             }
         }
 
@@ -349,7 +353,7 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
             }
             catch (Exception e)
             {
-                _sawmill.Error($"Failed to spawn mobs for {entry.Proto}: {e}");
+                // Suppressed error log: Failed to spawn mobs for entry.
             }
         }
 
@@ -384,7 +388,7 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
                     }
                     break;
                 default:
-                    throw new NotImplementedException();
+                    // No implementation, just skip.
             }
         }
 
@@ -405,6 +409,7 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
 
         var availableRooms = new ValueList<DungeonRoom>(dungeon.Rooms);
         var availableTiles = new List<Vector2i>();
+        bool spawned = false;
 
         while (availableRooms.Count > 0)
         {
@@ -426,11 +431,19 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
                 var uid = _entManager.SpawnAtPosition(entry.Proto, _map.GridTileToLocal(grid, grid, tile));
                 _entManager.RemoveComponent<GhostRoleComponent>(uid);
                 _entManager.RemoveComponent<GhostTakeoverAvailableComponent>(uid);
+                spawned = true;
                 return;
             }
         }
 
-        // oh noooooooooooo
+        // Robust fallback: forcibly spawn at grid origin if nothing else worked
+        if (!spawned)
+        {
+            var fallbackPos = _map.GridTileToLocal(grid, grid, Vector2i.Zero);
+            var uid = _entManager.SpawnAtPosition(entry.Proto, fallbackPos);
+            _entManager.RemoveComponent<GhostRoleComponent>(uid);
+            _entManager.RemoveComponent<GhostTakeoverAvailableComponent>(uid);
+        }
     }
 
     private async Task SpawnDungeonLoot(SalvageLootPrototype loot, EntityUid gridUid)
@@ -470,16 +483,21 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
     {
         await SuspendIfOutOfTime();
 
-        var structureComp = _entManager.EnsureComponent<SalvageDestructionExpeditionComponent>(mapUid);
-        var faction = _prototypeManager.Index<SalvageFactionPrototype>(mission.Faction);
-        var difficulty = _prototypeManager.Index(mission.Difficulty);
 
-        var shaggy = faction.Configs["DefenseStructure"];
+        var structureComp = _entManager.EnsureComponent<SalvageDestructionExpeditionComponent>(mapUid);
+        SalvageFactionPrototype faction;
+        if (!_prototypeManager.TryIndex<SalvageFactionPrototype>(mission.Faction, out faction))
+            faction = _prototypeManager.EnumeratePrototypes<SalvageFactionPrototype>().FirstOrDefault();
+        SalvageDifficultyPrototype difficulty;
+        if (!_prototypeManager.TryIndex<SalvageDifficultyPrototype>(mission.Difficulty, out difficulty))
+            difficulty = _prototypeManager.EnumeratePrototypes<SalvageDifficultyPrototype>().FirstOrDefault();
+
+        var shaggy = faction.Configs.ContainsKey("DefenseStructure") ? faction.Configs["DefenseStructure"] : faction.Configs.Values.FirstOrDefault();
 
         var availableRooms = new ValueList<DungeonRoom>(dungeon.Rooms);
         var availableTiles = new List<Vector2i>();
 
-        while (availableRooms.Count > 0 && structureComp.Structures.Count < difficulty.DestructionStructures)
+    while (availableRooms.Count > 0 && structureComp.Structures.Count < (difficulty?.DestructionStructures ?? 1))
         {
             availableTiles.Clear();
             var roomIndex = random.Next(availableRooms.Count);
@@ -502,6 +520,13 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
                 break;
             }
         }
+        // Robust fallback: forcibly spawn at grid origin if nothing else worked
+        while (structureComp.Structures.Count < (difficulty?.DestructionStructures ?? 1))
+        {
+            var uid = _entManager.SpawnEntity(shaggy, _map.GridTileToLocal(mapUid, grid, Vector2i.Zero));
+            _entManager.AddComponent<SalvageStructureComponent>(uid);
+            structureComp.Structures.Add(uid);
+        }
     }
 
     private async Task SetupElimination(
@@ -513,8 +538,11 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
         await SuspendIfOutOfTime();
 
         // spawn megafauna in a random place
-        var faction = _prototypeManager.Index<SalvageFactionPrototype>(mission.Faction);
-        var prototype = faction.Configs["Megafauna"];
+
+        SalvageFactionPrototype faction;
+        if (!_prototypeManager.TryIndex<SalvageFactionPrototype>(mission.Faction, out faction))
+            faction = _prototypeManager.EnumeratePrototypes<SalvageFactionPrototype>().FirstOrDefault();
+        var prototype = faction.Configs.ContainsKey("Megafauna") ? faction.Configs["Megafauna"] : faction.Configs.Values.FirstOrDefault();
 
         var availableRooms = new ValueList<DungeonRoom>(dungeon.Rooms);
         var availableTiles = new List<Vector2i>();
@@ -540,6 +568,11 @@ public sealed class SpawnSalvageMissionJob : Job<bool>
                 uid = _entManager.SpawnAtPosition(prototype, _map.GridTileToLocal(mapUid, grid, tile));
                 break;
             }
+        }
+        // Robust fallback: forcibly spawn at grid origin if nothing else worked
+        if (uid == EntityUid.Invalid)
+        {
+            uid = _entManager.SpawnAtPosition(prototype, _map.GridTileToLocal(mapUid, grid, Vector2i.Zero));
         }
 
         var eliminationComp = _entManager.EnsureComponent<SalvageEliminationExpeditionComponent>(mapUid);

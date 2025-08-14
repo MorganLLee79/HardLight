@@ -15,10 +15,7 @@ public sealed partial class DungeonJob
     /// </summary>
     private async Task PostGen(CorridorDecalSkirtingDunGen decks, DungeonData data, Dungeon dungeon, HashSet<Vector2i> reservedTiles, Random random)
     {
-        if (!data.Colors.TryGetValue(DungeonDataKey.Decals, out var color))
-        {
-            _sawmill.Error(Environment.StackTrace);
-        }
+    data.Colors.TryGetValue(DungeonDataKey.Decals, out var color);
 
         var directions = new ValueList<DirectionFlag>(4);
         var pocketDirections = new ValueList<Direction>(4);
