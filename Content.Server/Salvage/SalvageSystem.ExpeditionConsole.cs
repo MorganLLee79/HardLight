@@ -157,7 +157,7 @@ public sealed partial class SalvageSystem
         {
             PlayDenySound((entity, component));
             _popupSystem.PopupEntity(Loc.GetString("salvage-expedition-shuttle-not-found"), entity, PopupType.MediumCaution);
-            UpdateConsoles((uid, data));
+            UpdateConsoles((entity, data));
             return;
         }
 
@@ -189,14 +189,14 @@ public sealed partial class SalvageSystem
             {
                 PlayDenySound((entity, component));
                 _popupSystem.PopupEntity(Loc.GetString("salvage-expedition-not-everyone-aboard", ("target", uid)), entity, PopupType.MediumCaution);
-                UpdateConsoles((uid, data));
+                UpdateConsoles((entity, data));
                 return;
             }
         }
         // End SalvageSystem.Runner:OnConsoleFTLAttempt
 
     data.CanFinish = false;
-    UpdateConsoles((uid, data));
+    UpdateConsoles((entity, data));
 
         var map = Transform(entity).MapUid;
 
