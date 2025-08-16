@@ -286,10 +286,6 @@ public sealed partial class ShipyardConsoleMenu : FancyWindow
         ShipAppraisalLabel.Text = $"{BankSystemExtensions.ToSpesoString(shipPrice)} ({state.SellRate * 100.0f:F1}%)";
         SellShipButton.Disabled = state.ShipDeedTitle == null;
         SaveShipButton.Disabled = state.ShipDeedTitle == null;
-        LoadShipButton.Disabled = !state.IsTargetIdPresent;
-        LoadShipButton.ToolTip = state.IsTargetIdPresent 
-            ? null 
-            : Loc.GetString("shipyard-console-load-ship-no-id");
         TargetIdButton.Text = state.IsTargetIdPresent
             ? Loc.GetString("id-card-console-window-eject-button")
             : Loc.GetString("id-card-console-window-insert-button");
