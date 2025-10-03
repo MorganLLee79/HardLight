@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+# EMP EFFECTS
+
 - type: entity
   id: InstantEffectEMP
   name: instant EMP effect
@@ -12,6 +14,8 @@
     range: 1 # low range
     energyConsumption: 20000 # 20 kJ
     disableDuration: 20 # as opposed to 60
+
+# LIGHTNING
 
 - type: entity
   name: ionised lightning
@@ -24,6 +28,7 @@
     spawnOnHit: InstantEffectEMP
   - type: PointLight
     color: "#80C0FF"
+
 
 #example usage: add this to projectile parenting from BaseBulletTrigger
 # - type: LightningOnTrigger
