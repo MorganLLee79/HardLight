@@ -1,12 +1,12 @@
-- type: entity
-  id: AdminCharBlueNexaVenom
-  parent: MobVulpkanin
-  name: Dr. Venom
-  description: Wisps of gas trail from the port on her chest. Being too close stings your eyes.
-  suffix: BlueNexa, Admin
-  components:
-    - type: VoiceOverride
-      speechVerbOverride: Felinid
+#- type: entity
+#  id: AdminCharBlueNexaVenom
+#  parent: MobVulpkanin
+#  name: Dr. Venom
+#  description: Wisps of gas trail from the port on her chest. Being too close stings your eyes.
+#  suffix: BlueNexa, Admin
+#  components:
+#    - type: VoiceOverride
+#      speechVerbOverride: Felinid
 
 - type: entity
   name: chest gas port
@@ -389,6 +389,7 @@
   impactFlash:
     sprite: _Goobstation/Objects/Weapons/Guns/Projectiles/small_laser.rsi
     state: impact_beam_light_overcharged
+
 
 
 
