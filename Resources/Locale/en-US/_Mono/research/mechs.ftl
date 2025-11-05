@@ -1,4 +1,5 @@
 research-technology-mech-base = S2 Mechs
+research-technology-broadsword = S2 Broadsword Platform Mechs
 research-technology-halberd = Advanced S2 Platform Mechs
 research-technology-sabre = Experimental S2 Platform Mechs
 research-technology-flail = S4 Mechs

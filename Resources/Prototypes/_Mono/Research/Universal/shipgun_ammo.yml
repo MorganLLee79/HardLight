@@ -6,7 +6,7 @@
 
 - type: technology
   id: UniversalRailgunAmmo
-  name: Universal railgun ammo
+  name: research-technology-universal-railgun-ammo
   icon:
     sprite: _Mono/Objects/Weapons/Guns/Ammunition/Explosives/charonslug.rsi
     state: railgun_slug
@@ -18,7 +18,7 @@
 
 - type: technology
   id: UniversalSubnuclearRailgunAmmo
-  name: Universal subnuclear railgun ammo
+  name: research-technology-universal-railgun-ammo-subnuclear
   icon:
     sprite: _Mono/Objects/Weapons/Guns/Ammunition/Explosives/charonslug.rsi
     state: subnuclear
@@ -32,7 +32,7 @@
 
 - type: technology
   id: UniversalTorpedoAmmo
-  name: Universal ASM-220 ammo
+  name: research-technology-universal-asm220-ammo
   icon:
     sprite: _Mono/Objects/ShuttleWeapons/asm220.rsi
     state: space_artillery
@@ -45,7 +45,7 @@
 
 - type: technology
   id: UniversalTorpedoAmmoAdvanced
-  name: Universal ASM-220 advanced ammo
+  name: research-technology-universal-asm220-advanced
   icon:
     sprite: _Mono/Objects/ShuttleWeapons/asm220.rsi
     state: space_artillery
@@ -57,7 +57,7 @@
 
 - type: technology
   id: Universal150mmAmmo
-  name: Universal 150mm ammo
+  name: research-technology-universal-150mm-ammo
   icon:
     sprite: _Mono/Objects/Weapons/Guns/Ammunition/Explosives/150mmtarnyx.rsi
     state: 150mm_standard
@@ -70,7 +70,7 @@
 
 - type: technology
   id: UniversalLightFighterOrdinance
-  name: Universal light fighter ordnance
+  name: research-technology-universal-light-fighter-ordinance
   icon:
     sprite: _Mono/Objects/Weapons/Guns/Ammunition/Explosives/GPO.rsi
     state: GPO
@@ -83,7 +83,7 @@
 
 - type: technology
   id: UniversalAdvancedLightFighterOrdinance
-  name: Universal advanced light fighter ordnance
+  name: research-technology-universal-advanced-light-fighter-ordinance
   icon:
     sprite: _Mono/Objects/Weapons/Guns/Ammunition/Explosives/quasar.rsi
     state: quasar
