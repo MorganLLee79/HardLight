@@ -366,6 +366,27 @@ uplink-mercenary-20Rifle-OP-mags-desc = A quarter of .20 Rifle magazines, each f
 uplink-mercenary-30Rifle-OP-mags-name = .30 Rifle P+ Mags
 uplink-mercenary-30Rifle-OP-mags-desc = A quartet of .30 Rifle magazines, stacked with P+. Hit hard, soldier.
 
+uplink-mercenary-145x114mm-ammo-box-name = 14.5x114mm Ammo Box
+uplink-mercenary-145x114mm-ammo-box-desc = A box containing 10 rounds of anti-materiel rounds.  Time to go ship hunting.
+
+uplink-mercenary-635x40mm-ammo-box-name = 6.35x40mm Big Ammo Box
+uplink-mercenary-635x40mm-ammo-box-desc = A big ol' ammo box containing 200 rounds of 6.35 Caseless. For those eccentric mercs.
+
+uplink-mercenary-46x30mm-ammo-box-name = 4.6x30mm Big Ammo Box
+uplink-mercenary-46x30mm-ammo-box-desc = A box containing 4.6mm in large quantities.  Go light em' up.
+
+uplink-mercenary-57x28mm-ammo-box-name = 5.7x28mm Big Ammo Box
+uplink-mercenary-57x28mm-ammo-box-desc = An ammo box with a whole bunch of 5.7mm.
+
+uplink-mercenary-762x39mm-ammo-box-name = 7.62x39mm Big Ammo Box
+uplink-mercenary-762x39mm-ammo-box-desc = A big ol' ammo box containing 7.62x39.  A timeless classic.
+
+uplink-mercenary-762x51mm-ammo-box-name = 7.62x51mm Big Ammo Box
+uplink-mercenary-762x51mm-ammo-box-desc = An ammo box containing 7.62x51mm.  Hang on tight.
+
+uplink-mercenary-762x54mmR-ammo-box-name = 7.62x54mmR Big Ammo Box
+uplink-mercenary-762x54mmR-ammo-box-desc = A big ol' ammo box containing big ol' 7.62x54mmR.  Hit them hard.
+
 # region Syndicate
 uplink-emp-grenade-launcher-bundle-name = EMP China-Lake Bundle
 uplink-emp-grenade-launcher-bundle-desc = An old China-Lake grenade launcher bundled with 8 rounds of EMP.
