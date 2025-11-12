@@ -495,18 +495,6 @@
   conditions:
     - !type:TileNotBlocked
 
-- type: construction
-  id: BannerNanotrasenreal
-  graph: BannersGraph
-  startNode: start
-  targetNode: BannerNanotrasenreal
-  category: construction-category-furniture
-  objectType: Structure
-  placementMode: SnapgridCenter
-  canBuildInImpassable: false
-  conditions:
-    - !type:TileNotBlocked
-
 # Altars
 - type: construction
   id: AltarToolbox

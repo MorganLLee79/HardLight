@@ -48,7 +48,11 @@
       - map: [ "enum.HumanoidVisualLayers.RLeg" ]
       - map: [ "enum.HumanoidVisualLayers.LLeg" ]
       - map: [ "accessory1" ]
+      - map: [ "enum.HumanoidVisualLayers.Genital" ]
       - map: [ "accessory2" ]
+      - map: [ "enum.HumanoidVisualLayers.UndergarmentBottom" ]
+      - map: [ "enum.HumanoidVisualLayers.Penis" ]
+      - map: [ "enum.HumanoidVisualLayers.UndergarmentTop" ]
       - map: [ "jumpsuit" ]
       - map: [ "enum.HumanoidVisualLayers.LHand" ]
       - map: [ "enum.HumanoidVisualLayers.RHand" ]
@@ -110,12 +114,15 @@
     shape:
       - 0, 0, 3, 2
       - 0, 2, 5, 4
-  # - type: MouthStorage
-    # mouthProto: CheekStorage
-    # openStorageAction: ActionOpenMouthStorage
-    # spitDamageThreshold: 3
-  # - type: CrawlUnderObjects
-    # actionProto: ActionToggleSneakMode
+  - type: MouthStorage
+    mouthProto: CheekStorage
+    openStorageAction: ActionOpenMouthStorage
+    spitDamageThreshold: 3
+  - type: CrawlUnderObjects
+    actionProto: ActionToggleSneakMode
+  - type: DrawDepthVisualizer
+    key: enum.SneakingVisuals.Sneaking
+    depth: SmallMobs
 
 - type: entity
   save: false
